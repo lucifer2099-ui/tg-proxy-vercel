@@ -7,6 +7,24 @@ const TELEGRAM_API_DOMAIN = 'api.telegram.org';
 export default async function handler(request) {
   const url = new URL(request.url);
 
+  // 处理根路径，返回一个简单的状态页面
+  if (url.pathname === '/' || url.pathname === '') {
+    return new Response(JSON.stringify({
+      status: "running",
+      message: "Telegram Bot API Proxy is active.",
+      usage: "Set your API root to this domain.",
+      author: "Antigravity"
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // 忽略 favicon.ico
+  if (url.pathname === '/favicon.ico') {
+    return new Response(null, { status: 204 });
+  }
+
   // 处理预检请求 (OPTIONS)
   if (request.method === 'OPTIONS') {
     return new Response(null, {

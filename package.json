@@ -1,0 +1,17 @@
+{
+  "name": "tg-proxy-vercel",
+  "version": "1.0.0",
+  "description": "Telegram Bot API Proxy on Vercel Edge Runtime",
+  "main": "api/proxy.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "keywords": [
+    "telegram",
+    "proxy",
+    "vercel",
+    "edge"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
