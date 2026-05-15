@@ -38,7 +38,37 @@ export default async function handler(request) {
   }
 
   // 构造新的请求地址
-  const targetUrl = `https://${TELEGRAM_API_DOMAIN}${url.pathname}${url.search}`;
+  let targetUrl = `https://${TELEGRAM_API_DOMAIN}${url.pathname}${url.search}`;
+  let finalBody = request.body;
+
+  // 特殊处理 getUpdates 方法以防止 Vercel 超时断连
+  if (url.pathname.endsWith('/getUpdates')) {
+    // 1. 处理 URL 中的 timeout 参数
+    const searchParams = new URLSearchParams(url.search);
+    if (searchParams.has('timeout')) {
+      const t = parseInt(searchParams.get('timeout'));
+      if (t > 20) {
+        searchParams.set('timeout', '20');
+        targetUrl = `https://${TELEGRAM_API_DOMAIN}${url.pathname}?${searchParams.toString()}`;
+      }
+    }
+
+    // 2. 处理 POST JSON Body 中的 timeout 参数
+    if (request.method === 'POST' && request.headers.get('content-type')?.includes('application/json')) {
+      try {
+        const bodyText = await request.text();
+        const bodyJson = JSON.parse(bodyText);
+        if (bodyJson.timeout && bodyJson.timeout > 20) {
+          bodyJson.timeout = 20;
+          finalBody = JSON.stringify(bodyJson);
+        } else {
+          finalBody = bodyText; // 保持原样但已经消耗了 stream，所以传文本
+        }
+      } catch (e) {
+        // 解析失败则不做处理，但因为已经 read 过了，需传回原文
+      }
+    }
+  }
 
   // 复制并修改请求头
   const newHeaders = new Headers();
@@ -72,7 +102,7 @@ export default async function handler(request) {
     const modifiedRequest = new Request(targetUrl, {
       method: request.method,
       headers: newHeaders,
-      body: isGetOrHead ? null : request.body,
+      body: isGetOrHead ? null : finalBody,
       redirect: 'follow'
     });
 
