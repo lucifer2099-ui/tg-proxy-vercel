@@ -41,14 +41,38 @@ export default async function handler(request) {
   const targetUrl = `https://${TELEGRAM_API_DOMAIN}${url.pathname}${url.search}`;
 
   // 复制并修改请求头
-  const newHeaders = new Headers(request.headers);
+  const newHeaders = new Headers();
+  const headersToSkip = [
+    'host',
+    'connection',
+    'content-length',
+    'cf-ray',
+    'cf-visitor',
+    'cf-connecting-ip',
+    'x-forwarded-for',
+    'x-real-ip',
+    'x-vercel-id',
+    'x-vercel-proxy-signature',
+    'x-vercel-ip-city',
+    'x-vercel-ip-country'
+  ];
+
+  for (const [key, value] of request.headers.entries()) {
+    if (!headersToSkip.includes(key.toLowerCase())) {
+      newHeaders.set(key, value);
+    }
+  }
+
+  // 强制设置正确的 Host
   newHeaders.set('Host', TELEGRAM_API_DOMAIN);
 
   try {
+    const isGetOrHead = ['GET', 'HEAD'].includes(request.method.toUpperCase());
+    
     const modifiedRequest = new Request(targetUrl, {
       method: request.method,
       headers: newHeaders,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
+      body: isGetOrHead ? null : request.body,
       redirect: 'follow'
     });
 
@@ -59,6 +83,8 @@ export default async function handler(request) {
     responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
+    // 删除一些可能导致问题的响应头
+    responseHeaders.delete('content-encoding'); 
 
     return new Response(response.body, {
       status: response.status,
